@@ -3,6 +3,7 @@
 import sys
 from todo_cli.storage import TodoStorage
 from todo_cli.todo import TodoManager
+from todo_cli.export import TodoExporter
 
 def main():
     storage = TodoStorage("todos.json")
@@ -94,6 +95,38 @@ def main():
             status = "✓" if todo.completed else "○"
             print(f"{status} [{todo.id}] {todo.title} ({todo.priority})")
     
+    elif command == "export":
+        if len(sys.argv) < 3:
+            print("Error: Format required (csv or json)")
+            return
+        format_type = sys.argv[2]
+        filepath = sys.argv[3] if len(sys.argv) > 3 else f"todos_export.{format_type}"
+        todos = storage.load()
+        if format_type == "csv":
+            TodoExporter.to_csv(todos, filepath)
+            print(f"✓ Exported to CSV: {filepath}")
+        elif format_type == "json":
+            TodoExporter.to_json(todos, filepath)
+            print(f"✓ Exported to JSON: {filepath}")
+        else:
+            print("Error: Format must be 'csv' or 'json'")
+    
+    elif command == "import":
+        if len(sys.argv) < 3:
+            print("Error: Filepath required")
+            return
+        filepath = sys.argv[2]
+        format_type = "csv" if filepath.endswith(".csv") else "json"
+        try:
+            if format_type == "csv":
+                todos = TodoExporter.from_csv(filepath)
+            else:
+                todos = TodoExporter.from_json(filepath)
+            storage.save(todos)
+            print(f"✓ Imported {len(todos)} todos from {filepath}")
+        except Exception as e:
+            print(f"Error importing: {e}")
+    
     else:
         print(f"Unknown command: {command}")
         print_help()
@@ -111,12 +144,16 @@ Usage:
   todo-cli delete <id>                    Delete todo
   todo-cli search <query>                 Search todos
   todo-cli filter <category>              Filter by category
+  todo-cli export <format> [filepath]     Export todos (csv or json)
+  todo-cli import <filepath>              Import todos from file
   todo-cli help                           Show this help
 
 Examples:
   todo-cli add "Buy milk" --priority high --category shopping
   todo-cli search "milk"
   todo-cli filter shopping
+  todo-cli export csv todos_backup.csv
+  todo-cli import todos_backup.csv
 """)
 
 if __name__ == "__main__":
